@@ -84,4 +84,4 @@ classifier = Classifier_GRU('test',input_shape,1,True)
 
 classifier.fit(X_train,Y_train,X_test,Y_test)
 
-
+#Test git 
