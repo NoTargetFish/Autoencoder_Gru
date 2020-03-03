@@ -1,17 +1,19 @@
 import numpy as np
 import pandas as pd
-import keras 
+import tensorflow as tf
 import time 
     
 def readucr(filename):#读取数据
     data = np.loadtxt(filename, dtype=str, delimiter = ',')
     Y = data[:,1:576]
     X = data[:,0:575]
+    X = np.array(X, dtype=np.float32)
+    Y = np.array(Y, dtype=np.float32)
     return X, Y
 
-class Classifier_GRU:#GRU神经网络
+class Autoencoder_GRU:#GRU神经网络
 
-	def __init__(self, output_directory, input_shape, output_shape, verbose=False):#模型初始化
+	def __init__(self, output_directory, input_shape, output_shape, verbose= True):#模型初始化
 		self.output_directory = output_directory
 		self.model = self.build_model(input_shape, output_shape)
 		if(verbose==True):
@@ -20,26 +22,24 @@ class Classifier_GRU:#GRU神经网络
 		self.model.save_weights(self.output_directory+'model_init.hdf5')
 
 	def build_model(self, input_shape, output_shape):#创建模型
-		input_shape = input_shape[0].shape
-		input_layer = keras.layers.Input(input_shape)
+		input_layer = tf.keras.Input(input_shape)
 		
-		layer_1 = keras.layers.GRU(20,return_sequences=True)(input_layer)
-		layer_1 = keras.layers.normalization.BatchNormalization()(layer_1)
-		layer_1 = keras.layers.Activation(activation='tanh')(layer_1)
+		layer_1 = tf.keras.layers.GRU(20,return_sequences=True)(input_layer)
+		layer_1 = tf.keras.layers.BatchNormalization()(layer_1)
+		layer_1 = tf.keras.layers.Activation(activation='tanh')(layer_1)
 
-		output_layer = keras.layers.Dense(output_shape, activation='linear')(layer_1)
+		output_layer = tf.keras.layers.Dense(output_shape, activation='linear')(layer_1)
 
-		model = keras.models.Model(inputs=input_layer, outputs=output_layer)
+		model = tf.keras.Model(inputs=input_layer, outputs=output_layer)
 
-		model.compile(loss='mse', optimizer = keras.optimizers.Adam(),
-			metrics=['accuracy'])
+		model.compile(loss='mse', optimizer = 'adam',metrics=['mae'])
 
-		reduce_lr = keras.callbacks.ReduceLROnPlateau(monitor='loss', factor=0.5, patience=50, 
+		reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(monitor='loss', factor=0.5, patience=50, 
 			min_lr=0.0001)
 
-		file_path = self.output_directory+'best_model.hdf5'
+		file_path = self.output_directory+'best1_model.hdf5'
 
-		model_checkpoint = keras.callbacks.ModelCheckpoint(filepath=file_path, monitor='loss', 
+		model_checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath=file_path, monitor='loss', 
 			save_best_only=True)
 
 		self.callbacks = [reduce_lr,model_checkpoint]
@@ -60,28 +60,24 @@ class Classifier_GRU:#GRU神经网络
 		
 		duration = time.time() - start_time
 
-		model = keras.models.load_model(self.output_directory+'best_model.hdf5')
+		model = tf.keras.models.load_model(self.output_directory+'best1_model.hdf5')
 
 		y_pred = model.predict(x_val)
 
-		keras.backend.clear_session()
+		tf.keras.backend.clear_session()
 
 X_train,Y_train = readucr('Car_TRAIN.txt')
-
 X_test,Y_test = readucr('Car_TEST.txt')
 
 X_train = X_train.reshape((X_train.shape[0],X_train.shape[1],1))
-
 X_test = X_test.reshape((X_test.shape[0],X_test.shape[1],1))
-
 Y_train = Y_train.reshape((Y_train.shape[0],Y_train.shape[1],1))
-
 Y_test = Y_test.reshape((Y_test.shape[0],Y_test.shape[1],1))
 
 input_shape = X_train.shape[1:]
 
-classifier = Classifier_GRU('test',input_shape,1,True)
+predict = Autoencoder_GRU('test',input_shape,1,1)
 
-classifier.fit(X_train,Y_train,X_test,Y_test)
+predict.fit(X_train,Y_train,X_test,Y_test)
 
 #Test git 
